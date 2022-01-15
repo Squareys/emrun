@@ -1309,6 +1309,8 @@ def list_android_browsers():
       browsers += ['opera_mini']
     if line.endswith('=mobi.mgeek.TunnyBrowser'):
       browsers += ['dolphin']
+    if line.endswith('=com.oculus.browser'):
+      browsers += ['oculus-browser']
 
   browsers.sort()
   logi('emrun has automatically found the following browsers on the connected Android device:')
@@ -1676,6 +1678,8 @@ to emrun itself and arguments to your page.
       elif options.browser == 'dolphin':
         # Current stable Dolphin as of 12/2013 does not have WebGL support.
         browser_app = 'mobi.mgeek.TunnyBrowser/.BrowserActivity'
+      elif options.browser == 'oculus-browser':
+        browser_app = 'com.oculus.browser/com.oculus.browser.PanelService'
       else:
         loge("Don't know how to launch browser " + options.browser + ' on Android!')
         return 1
@@ -1687,7 +1691,10 @@ to emrun itself and arguments to your page.
       # 5. Locate the name of the main activity for the browser in manifest.txt and add an entry to above list in form 'appname/mainactivityname'
 
       url = url.replace('&', '\\&')
-      browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
+      if options.browser == 'oculus-browser':
+          browser = [ADB, 'shell', 'am', 'start', '-n', 'com.oculus.vrshell/.MainActivity', '-d', 'apk://com.oculus.browser', '-e', 'uri', url]
+      else:
+        browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
       processname_killed_atexit = browser_app[:browser_app.find('/')]
   else: # Launching a web page on local system.
     if options.browser:
@@ -1792,15 +1799,17 @@ to emrun itself and arguments to your page.
 
   if not options.no_browser:
     logv("Starting browser: %s" % ' '.join(browser))
-    # if browser[0] == 'cmd':
-    #   Workaround an issue where passing 'cmd /C start' is not able to detect
-    #   when the user closes the page.
-    #   serve_forever = True
-    global previous_browser_processes
-    logv(browser_exe)
-    previous_browser_processes = list_processes_by_name(browser_exe)
-    for p in previous_browser_processes:
-      logv('Before spawning web browser, found a running ' + os.path.basename(browser_exe) + ' browser process id: ' + str(p['pid']))
+    if not options.android:
+        # if browser[0] == 'cmd':
+        #   Workaround an issue where passing 'cmd /C start' is not able to detect
+        #   when the user closes the page.
+        #   serve_forever = True
+        global previous_browser_processes
+        logv(browser_exe)
+        previous_browser_processes = list_processes_by_name(browser_exe)
+        for p in previous_browser_processes:
+            logv('Before spawning web browser, found a running ' + os.path.basename(browser_exe) + ' browser process id: ' + str(p['pid']))
+
     browser_process = subprocess.Popen(browser, env=subprocess_env())
     logv('Launched browser process with pid=' + str(browser_process.pid))
     if options.kill_exit:
